@@ -56,7 +56,7 @@ async function callGemini(messages: { role: string; content: string }[], apiKey:
         };
     }
 
-    const MODELS_TO_TRY = ['gemini-2.0-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.0-pro'];
+    const MODELS_TO_TRY = ['gemini-2.5-flash', 'gemini-2.0-flash-001', 'gemini-2.0-flash-lite-001', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'];
     let lastError = '';
 
     for (const model of MODELS_TO_TRY) {
