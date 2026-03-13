@@ -74,6 +74,7 @@ export interface AppSettings {
     notificationsEnabled: boolean;
     briefingTime: string;          // "HH:MM" for daily morning notification
     taskReminderMinutes: number;   // minutes before due date to fire reminder
+    preferredVoiceName?: string;   // user-picked TTS voice name
 }
 
 export interface AnalyticsSummary {

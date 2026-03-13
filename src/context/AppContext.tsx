@@ -20,6 +20,7 @@ import {
     scheduleTaskReminder,
     hasPermission,
 } from '../services/pushService';
+import { setPreferredVoice } from '../services/voiceService';
 
 const AUTO_LOCK_MS = 5 * 60 * 1000;
 
@@ -147,6 +148,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
             saveSettings(next);
             if (firebaseUid) {
                 saveSettingsToFirestore(firebaseUid, next).catch(console.warn);
+            }
+            // Apply preferred voice immediately
+            if ('preferredVoiceName' in changes) {
+                setPreferredVoice(changes.preferredVoiceName);
             }
             return next;
         });

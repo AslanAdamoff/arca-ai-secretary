@@ -56,23 +56,33 @@ async function callGemini(messages: { role: string; content: string }[], apiKey:
         };
     }
 
-    const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-        {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents }),
-        }
-    );
+    const MODELS_TO_TRY = ['gemini-2.0-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.0-pro'];
+    let lastError = '';
 
-    if (!response.ok) {
-        const errBody = await response.json().catch(() => ({}));
-        const errMsg = errBody?.error?.message ?? `Gemini error ${response.status}`;
-        const hint = response.status === 429 ? ' (лимит запросов — подождите минуту)' : '';
-        return { content: '', error: errMsg + hint };
+    for (const model of MODELS_TO_TRY) {
+        const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents }),
+            }
+        );
+
+        if (response.status === 404) {
+            lastError = `model ${model} not found`;
+            continue; // try next model
+        }
+        if (!response.ok) {
+            const errBody = await response.json().catch(() => ({}));
+            const errMsg = errBody?.error?.message ?? `Gemini error ${response.status}`;
+            const hint = response.status === 429 ? ' (лимит запросов — подождите минуту)' : '';
+            return { content: '', error: errMsg + hint };
+        }
+        const data = await response.json();
+        return { content: data.candidates?.[0]?.content?.parts?.[0]?.text ?? '' };
     }
-    const data = await response.json();
-    return { content: data.candidates?.[0]?.content?.parts?.[0]?.text ?? '' };
+    return { content: '', error: `Gemini: ни одна из моделей не доступна (ключ: ${lastError})` };
 }
 
 function demoResponse(_userMessage: string, _context?: string): AIResponse {

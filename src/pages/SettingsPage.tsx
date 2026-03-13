@@ -1,10 +1,11 @@
-import { useState } from 'react';
-import { User, Bot, Mic, Sun, Key, Download, Upload, Info, Shield, Lock, Cloud, CloudOff, Bell, BellOff } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { User, Bot, Mic, Sun, Key, Download, Upload, Info, Shield, Lock, Cloud, CloudOff, Bell, BellOff, Play } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { exportAllData, importAllData } from '../services/storage';
 import type { AIProvider, ReviewMode } from '../types';
 import PinScreen from '../components/PinScreen';
 import { requestPermission, hasPermission, isPushSupported } from '../services/pushService';
+import { getAvailableVoices, speakARCA } from '../services/voiceService';
 
 type PinFlow = 'verify-old' | 'setup' | 'confirm' | null;
 
@@ -13,8 +14,20 @@ export default function SettingsPage() {
     const [showKey, setShowKey] = useState(false);
     const [pinFlow, setPinFlow] = useState<PinFlow>(null);
     const [newPin, setNewPin] = useState('');
+    const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
     const pushSupported = isPushSupported();
     const pushGranted = hasPermission();
+
+    useEffect(() => {
+        // Load voices (may be async in Chrome)
+        const load = () => {
+            const voices = getAvailableVoices(settings.voiceLanguage?.split('-')[0] ?? 'ru');
+            if (voices.length > 0) setAvailableVoices(voices);
+        };
+        load();
+        window.speechSynthesis?.addEventListener('voiceschanged', load);
+        return () => window.speechSynthesis?.removeEventListener('voiceschanged', load);
+    }, [settings.voiceLanguage]);
 
     const hasPIN = !!settings.pin;
 
@@ -361,6 +374,28 @@ export default function SettingsPage() {
                                 onChange={e => updateSettings({ voiceSpeed: parseFloat(e.target.value) })}
                                 style={{ accentColor: 'var(--accent-primary)', width: 100 }} />
                         </div>
+                        {availableVoices.length > 0 && (
+                            <div className="settings-row">
+                                <div className="settings-row-info">
+                                    <div className="settings-row-label">Голос ARCA</div>
+                                    <div className="settings-row-desc">Выберите лучший голос на вашем устройстве</div>
+                                </div>
+                                <div className="flex gap-xs" style={{ alignItems: 'center' }}>
+                                    <select className="form-select" style={{ fontSize: 12, maxWidth: 160 }}
+                                        value={settings.preferredVoiceName ?? ''}
+                                        onChange={e => updateSettings({ preferredVoiceName: e.target.value || undefined })}>
+                                        <option value="">Авто (лучший)</option>
+                                        {availableVoices.map(v => (
+                                            <option key={v.name} value={v.name}>{v.name}</option>
+                                        ))}
+                                    </select>
+                                    <button className="btn btn-ghost btn-sm"
+                                        onClick={() => speakARCA('Привет! Я ваш персональный ассистент ARCA.')}>
+                                        <Play size={12} style={{ marginRight: 4 }} />Тест
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </>
                 )}
             </div>
