@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Target, Sparkles, Check, ChevronRight, Loader, X, Calendar } from 'lucide-react';
+import { Target, Sparkles, Check, ChevronRight, Loader, X, Calendar, AlertCircle } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 import { useApp } from '../context/AppContext';
-import { decomposeGoal, type DecomposedTask } from '../services/aiService';
+import { decomposeGoal, sendMessage, type DecomposedTask } from '../services/aiService';
 import { buildTask } from '../services/taskService';
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -30,6 +30,7 @@ export default function GoalDecomposerPage() {
     const [selected, setSelected] = useState<Set<number>>(new Set());
     const [saving, setSaving] = useState(false);
     const [done, setDone] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const handleDecompose = async () => {
         if (!goal.trim()) return;
@@ -37,9 +38,25 @@ export default function GoalDecomposerPage() {
         setTasks([]);
         setSelected(new Set());
         setDone(false);
-        const result = await decomposeGoal(goal, settings, context || undefined);
-        setTasks(result);
-        setSelected(new Set(result.map((_, i) => i))); // select all by default
+        setError(null);
+        try {
+            // First check if AI responds at all
+            const testMsg = await sendMessage([], `Разбей цель на задачи JSON: "${goal}"`, settings);
+            if (testMsg.error) {
+                setError(testMsg.error);
+                setLoading(false);
+                return;
+            }
+            const result = await decomposeGoal(goal, settings, context || undefined);
+            if (result.length === 0) {
+                setError('Не удалось разобрать цель. Попробуйте ещё раз.');
+            } else {
+                setTasks(result);
+                setSelected(new Set(result.map((_, i) => i)));
+            }
+        } catch (e) {
+            setError(String(e));
+        }
         setLoading(false);
     };
 
@@ -145,6 +162,22 @@ export default function GoalDecomposerPage() {
                     )}
                 </button>
             </div>
+
+            {/* Error message */}
+            {error && (
+                <div className="card mb-md" style={{ border: '1px solid rgba(244,114,182,0.3)', background: 'rgba(244,114,182,0.07)' }}>
+                    <div className="flex items-center gap-sm mb-xs">
+                        <AlertCircle size={15} color="var(--prio-urgent)" />
+                        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--prio-urgent)' }}>Ошибка</span>
+                    </div>
+                    <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>{error}</p>
+                    {error.includes('429') || error.includes('лимит') ? (
+                        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
+                            💡 Подождите 1 минуту — это ограничение бесплатного API. Потом попробуйте снова.
+                        </p>
+                    ) : null}
+                </div>
+            )}
 
             {/* Task list */}
             {tasks.length > 0 && (
