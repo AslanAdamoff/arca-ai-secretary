@@ -28,7 +28,7 @@ export function isSpeakingNow(): boolean {
 
 /**
  * Score voices by preference. Higher = better.
- * Prefers macOS premium voices «Milena», «Katya» and falls back to any ru-RU.
+ * Priority: male butler voices (Yuri, Daniel, Alex) > any male > neural > female
  */
 function scoreVoice(v: SpeechSynthesisVoice, lang: string): number {
     let score = 0;
@@ -36,12 +36,16 @@ function scoreVoice(v: SpeechSynthesisVoice, lang: string): number {
     else if (v.lang.startsWith(lang.split('-')[0])) score += 5;
 
     const name = v.name.toLowerCase();
-    // macOS premium Russian female voices
-    if (/milena|katya|victoria|viktoria|irina|alice|alena|oksana/.test(name)) score += 20;
-    // Generic female boost
-    if (/female|женск/.test(name)) score += 8;
+    // macOS male Russian — Yuri is the premium butler voice
+    if (/yuri|юрий/.test(name)) score += 40;
+    // Other good male voices (English butler fallback)
+    if (/daniel|alex|thomas|oliver|fred|viktor|николай/.test(name)) score += 25;
+    // Generic male boost
+    if (/male|мужск/.test(name)) score += 15;
     // Neural / Enhanced voices sound much better
-    if (/neural|enhanced|premium|natural/.test(name)) score += 15;
+    if (/neural|enhanced|premium|natural/.test(name)) score += 12;
+    // Penalise female voices (user wants male)
+    if (/female|женск|milena|katya|viktoria|irina|alice|alena|oksana|karen|samantha|moira/.test(name)) score -= 30;
     // Penalise obviously bad voices
     if (/compact|junior|novelty|zarvox|whisper|bad|trinoids/.test(name)) score -= 20;
 
@@ -150,10 +154,10 @@ export function speak(
     window.speechSynthesis.cancel();
 
     const lang = options.lang ?? 'ru-RU';
-    // Rate 0.87 sounds noticeably more human than 1.0
-    const speed = Math.max(0.5, Math.min(2, options.speed ?? 0.87));
-    // Slightly higher pitch for a warmer female-ish tone
-    const pitch = Math.max(0.5, Math.min(2, options.pitch ?? 1.1));
+    // Rate 0.82 — calm, authoritative butler pace
+    const speed = Math.max(0.5, Math.min(2, options.speed ?? 0.82));
+    // Pitch 0.82 — deeper, masculine voice
+    const pitch = Math.max(0.5, Math.min(2, options.pitch ?? 0.82));
 
     const sentences = preprocessText(text);
     isSpeaking = true;
@@ -161,15 +165,15 @@ export function speak(
 }
 
 /**
- * ARCA-specific speak: calm, confident, slightly slower
+ * ARCA-specific speak: deep, calm, butler-style
  */
 export function speakARCA(
     text: string,
-    speed = 0.85,
+    speed = 0.80,
     lang = 'ru-RU',
     onEnd?: () => void
 ): void {
-    speak(text, { speed, pitch: 1.08, lang }, onEnd);
+    speak(text, { speed, pitch: 0.85, lang }, onEnd);
 }
 
 export function stopSpeaking(): void {

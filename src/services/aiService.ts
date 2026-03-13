@@ -1,4 +1,5 @@
 import type { AppSettings, ChatMessage, Task } from '../types';
+import { buildMemoryPrompt, learnFromExchange } from './memoryService';
 
 const ENV_GEMINI_KEY = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
 const ENV_OPENAI_KEY = import.meta.env.VITE_OPENAI_API_KEY as string | undefined;
@@ -120,6 +121,7 @@ export async function sendMessage(
     extraContext?: string
 ): Promise<AIResponse> {
     const systemContent = SYSTEM_PROMPT(settings.userName) +
+        buildMemoryPrompt() +
         (taskContext ? `\n\nТекущая задача в контексте:\nНазвание: ${taskContext.title}\nОписание: ${taskContext.description}\nСтатус: ${taskContext.status}\nПриоритет: ${taskContext.priority}` : '') +
         (extraContext ? `\n\n${extraContext}` : '');
 
@@ -136,9 +138,16 @@ export async function sendMessage(
     if (settings.aiProvider === 'gemini' && geminiKey) return callGemini(messages, geminiKey);
     if (settings.aiProvider === 'openai' && openaiKey) return callOpenAI(messages, openaiKey);
 
-    // Auto-detect: env keys always win over demo mode
-    if (geminiKey) return callGemini(messages, geminiKey);
-    if (openaiKey) return callOpenAI(messages, openaiKey);
+    if (geminiKey) {
+        const result = await callGemini(messages, geminiKey);
+        if (!result.error) learnFromExchange(newMessage, result.content);
+        return result;
+    }
+    if (openaiKey) {
+        const result = await callOpenAI(messages, openaiKey);
+        if (!result.error) learnFromExchange(newMessage, result.content);
+        return result;
+    }
 
     return demoResponse(newMessage, taskContext?.title);
 }
