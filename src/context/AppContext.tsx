@@ -14,6 +14,12 @@ import {
     bulkSaveTasks,
 } from '../services/firestoreStorage';
 import type { User } from 'firebase/auth';
+import {
+    scheduleDailyNotification,
+    cancelDailyNotification,
+    scheduleTaskReminder,
+    hasPermission,
+} from '../services/pushService';
 
 const AUTO_LOCK_MS = 5 * 60 * 1000;
 
@@ -194,6 +200,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setToastMsg(msg);
         setTimeout(() => setToastMsg(null), 2500);
     }, []);
+
+    // ── Push Notifications ─────────────────────────────────────────────────
+    useEffect(() => {
+        if (settings.notificationsEnabled && hasPermission()) {
+            scheduleDailyNotification(
+                'morning-briefing',
+                settings.briefingTime,
+                '☀️ Доброе утро!',
+                `${settings.userName}, пора начать день. Открой приложение для утреннего брифинга.`,
+                '/morning'
+            );
+        } else {
+            cancelDailyNotification('morning-briefing');
+        }
+    }, [settings.notificationsEnabled, settings.briefingTime, settings.userName]);
+
+    useEffect(() => {
+        if (!settings.notificationsEnabled || !hasPermission()) return;
+        tasks.forEach(task => {
+            if (task.dueDate && task.status !== 'done' && task.status !== 'cancelled') {
+                scheduleTaskReminder(task.id, task.title, task.dueDate, settings.taskReminderMinutes);
+            }
+        });
+    }, [tasks, settings.notificationsEnabled, settings.taskReminderMinutes]);
 
     // ── Unlock ────────────────────────────────────────────────────────────
     const unlock = useCallback(() => {

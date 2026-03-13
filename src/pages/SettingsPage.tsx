@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { User, Bot, Mic, Sun, Key, Download, Upload, Info, Shield, Lock, Cloud, CloudOff } from 'lucide-react';
+import { User, Bot, Mic, Sun, Key, Download, Upload, Info, Shield, Lock, Cloud, CloudOff, Bell, BellOff } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { exportAllData, importAllData } from '../services/storage';
 import type { AIProvider, ReviewMode } from '../types';
 import PinScreen from '../components/PinScreen';
+import { requestPermission, hasPermission, isPushSupported } from '../services/pushService';
 
 type PinFlow = 'verify-old' | 'setup' | 'confirm' | null;
 
@@ -12,6 +13,8 @@ export default function SettingsPage() {
     const [showKey, setShowKey] = useState(false);
     const [pinFlow, setPinFlow] = useState<PinFlow>(null);
     const [newPin, setNewPin] = useState('');
+    const pushSupported = isPushSupported();
+    const pushGranted = hasPermission();
 
     const hasPIN = !!settings.pin;
 
@@ -187,6 +190,65 @@ export default function SettingsPage() {
                 <div style={{ background: 'var(--bg-elevated)', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: 'var(--text-muted)', marginTop: 12 }}>
                     Блокировка через 5 мин бездействия · Блокировка при сворачивании
                 </div>
+            </div>
+
+            {/* Notifications */}
+            <div className="card mb-md">
+                <div className="flex items-center gap-sm mb-md">
+                    {settings.notificationsEnabled ? <Bell size={16} color="var(--accent-warning)" /> : <BellOff size={16} color="var(--text-muted)" />}
+                    <span style={{ fontWeight: 600, fontSize: 14 }}>Уведомления</span>
+                    {!pushSupported && (
+                        <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)' }}>Не поддерживается</span>
+                    )}
+                </div>
+                <div className="settings-row">
+                    <div className="settings-row-info">
+                        <div className="settings-row-label">Включить уведомления</div>
+                        <div className="settings-row-desc">
+                            {pushGranted ? '🔔 Разрешение выдано' : '🔕 Нужно разрешение браузера'}
+                        </div>
+                    </div>
+                    <label className="toggle">
+                        <input type="checkbox"
+                            checked={settings.notificationsEnabled && pushGranted}
+                            disabled={!pushSupported}
+                            onChange={async e => {
+                                if (e.target.checked && !pushGranted) {
+                                    const granted = await requestPermission();
+                                    if (!granted) { toast('Разрешение на уведомления не выдано'); return; }
+                                }
+                                updateSettings({ notificationsEnabled: e.target.checked });
+                            }} />
+                        <span className="toggle-slider" />
+                    </label>
+                </div>
+                {settings.notificationsEnabled && pushGranted && (
+                    <>
+                        <div className="settings-row" style={{ marginTop: 12 }}>
+                            <div className="settings-row-info">
+                                <div className="settings-row-label">Утренний брифинг</div>
+                                <div className="settings-row-desc">ARCA будит тебя и открывает обзор дня</div>
+                            </div>
+                            <input type="time" className="form-input" style={{ width: 110 }}
+                                value={settings.briefingTime}
+                                onChange={e => updateSettings({ briefingTime: e.target.value })} />
+                        </div>
+                        <div className="settings-row" style={{ marginTop: 12 }}>
+                            <div className="settings-row-info">
+                                <div className="settings-row-label">Напоминание о задаче</div>
+                                <div className="settings-row-desc">За сколько минут до дедлайна</div>
+                            </div>
+                            <select className="form-select" style={{ width: 110 }}
+                                value={settings.taskReminderMinutes}
+                                onChange={e => updateSettings({ taskReminderMinutes: Number(e.target.value) })}>
+                                <option value={15}>За 15 мин</option>
+                                <option value={30}>За 30 мин</option>
+                                <option value={60}>За 1 час</option>
+                                <option value={120}>За 2 часа</option>
+                            </select>
+                        </div>
+                    </>
+                )}
             </div>
 
             {/* Review mode */}

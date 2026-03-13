@@ -16,6 +16,9 @@ const defaultSettings: AppSettings = {
     voicePitch: 1.0,
     voiceLanguage: 'ru-RU',
     userName: 'Пользователь',
+    notificationsEnabled: false,
+    briefingTime: '08:00',
+    taskReminderMinutes: 30,
 };
 
 function get<T>(key: string): T | null {

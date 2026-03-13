@@ -71,6 +71,9 @@ export interface AppSettings {
     eveningReminderTime?: string;
     userName: string;
     pin?: string;
+    notificationsEnabled: boolean;
+    briefingTime: string;          // "HH:MM" for daily morning notification
+    taskReminderMinutes: number;   // minutes before due date to fire reminder
 }
 
 export interface AnalyticsSummary {
