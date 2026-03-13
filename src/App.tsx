@@ -9,6 +9,7 @@ import MorningReviewPage from './pages/MorningReviewPage';
 import EveningReviewPage from './pages/EveningReviewPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import SettingsPage from './pages/SettingsPage';
+import GoalDecomposerPage from './pages/GoalDecomposerPage';
 import { useApp } from './context/AppContext';
 
 export default function App() {
@@ -37,6 +38,7 @@ export default function App() {
           <Route path="/evening" element={<EveningReviewPage />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/goal" element={<GoalDecomposerPage />} />
         </Routes>
       </main>
       <BottomNav />

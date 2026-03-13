@@ -1,5 +1,8 @@
 import type { AppSettings, ChatMessage, Task } from '../types';
 
+const ENV_GEMINI_KEY = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
+const ENV_OPENAI_KEY = import.meta.env.VITE_OPENAI_API_KEY as string | undefined;
+
 const SYSTEM_PROMPT = (userName: string) => `Ты — персональный ИИ-ассистент и секретарь по имени ARCA (от Adaptive Resource & Communication Assistant). 
 Ты общаешься на русском языке (если пользователь не переключится на другой).
 Пользователя зовут ${userName}.
@@ -88,12 +91,17 @@ export async function sendMessage(
         { role: 'user', content: newMessage },
     ];
 
-    if (settings.aiProvider === 'openai' && settings.openaiApiKey) {
-        return callOpenAI(messages, settings.openaiApiKey);
-    }
-    if (settings.aiProvider === 'gemini' && settings.geminiApiKey) {
-        return callGemini(messages, settings.geminiApiKey);
-    }
+    const geminiKey = settings.geminiApiKey || ENV_GEMINI_KEY;
+    const openaiKey = settings.openaiApiKey || ENV_OPENAI_KEY;
+
+    // Explicit provider selection (from Settings)
+    if (settings.aiProvider === 'gemini' && geminiKey) return callGemini(messages, geminiKey);
+    if (settings.aiProvider === 'openai' && openaiKey) return callOpenAI(messages, openaiKey);
+
+    // Auto-detect: env keys always win over demo mode
+    if (geminiKey) return callGemini(messages, geminiKey);
+    if (openaiKey) return callOpenAI(messages, openaiKey);
+
     return demoResponse(newMessage, taskContext?.title);
 }
 
@@ -103,4 +111,48 @@ export async function generateSummary(
 ): Promise<string> {
     const result = await sendMessage([], context, settings);
     return result.content || 'Не удалось сгенерировать саммари.';
+}
+
+/**
+ * Decompose a high-level goal into a list of concrete tasks.
+ * Returns an array of task titles with optional due offsets.
+ */
+export interface DecomposedTask {
+    title: string;
+    daysFromNow: number;   // 0 = today, 1 = tomorrow, etc.
+    priority: 'low' | 'medium' | 'high' | 'urgent';
+    category: 'work' | 'personal' | 'health' | 'finance' | 'learning' | 'other';
+    description?: string;
+}
+
+export async function decomposeGoal(
+    goal: string,
+    settings: AppSettings,
+    context?: string
+): Promise<DecomposedTask[]> {
+    const prompt = `Ты — ARCA, личный секретарь ${settings.userName}.
+Цель: "${goal}"
+${context ? `Контекст: ${context}` : ''}
+
+Разбей эту цель на 5-8 конкретных задач. Ответь ONLY valid JSON array, без текста до/после:
+[
+  {
+    "title": "Название задачи",
+    "daysFromNow": 0,
+    "priority": "high",
+    "category": "work",
+    "description": "Краткое описание"
+  }
+]
+priority: low|medium|high|urgent
+category: work|personal|health|finance|learning|other
+daysFromNow: 0-14`;
+
+    const result = await sendMessage([], prompt, settings);
+    try {
+        const json = result.content.match(/\[.*\]/s)?.[0] ?? result.content;
+        return JSON.parse(json) as DecomposedTask[];
+    } catch {
+        return [];
+    }
 }

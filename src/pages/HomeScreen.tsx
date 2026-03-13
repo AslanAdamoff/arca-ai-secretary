@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { Sun, Moon, Plus, TrendingUp, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
+import { Sun, Moon, Plus, CheckCircle2, Clock, AlertTriangle, Target } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { getTasksForToday, getOverdueTasks } from '../services/taskService';
 
@@ -75,12 +75,12 @@ export default function HomeScreen() {
                     <div className="quick-action-title">Чат с ARCA</div>
                     <div className="quick-action-desc">ИИ-ассистент всегда готов</div>
                 </button>
-                <button className="quick-action-card" onClick={() => navigate('/analytics')}>
+                <button className="quick-action-card" onClick={() => navigate('/goal')}>
                     <div className="quick-action-icon" style={{ background: 'rgba(52,211,153,0.12)' }}>
-                        <TrendingUp size={20} color="var(--accent-success)" />
+                        <Target size={20} color="var(--accent-success)" />
                     </div>
-                    <div className="quick-action-title">Аналитика</div>
-                    <div className="quick-action-desc">Прогресс и итоги</div>
+                    <div className="quick-action-title">Разобрать цель</div>
+                    <div className="quick-action-desc">ARCA разложит на задачи</div>
                 </button>
             </div>
 
